@@ -5,3 +5,4 @@ PciLeechPlugin/x64
 *.aps
 *.user
 bin/
+/bin/Release/x64/PciLeechPlugin.dll
