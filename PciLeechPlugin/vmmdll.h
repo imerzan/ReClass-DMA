@@ -11,7 +11,7 @@
 // (c) Ulf Frisk, 2018-2024
 // Author: Ulf Frisk, pcileech@frizk.net
 //
-// Header Version: 5.9
+// Header Version: 5.10
 //
 
 #include "leechcore.h"
@@ -197,6 +197,7 @@ VOID VMMDLL_MemFree(_Frees_ptr_opt_ PVOID pvMem);
 #define VMMDLL_OPT_CORE_VERBOSE_EXTRA_TLP               0x4000000400000000  // RW
 #define VMMDLL_OPT_CORE_MAX_NATIVE_ADDRESS              0x4000000800000000  // R
 #define VMMDLL_OPT_CORE_LEECHCORE_HANDLE                0x4000001000000000  // R - underlying leechcore handle (do not close).
+#define VMMDLL_OPT_CORE_VMM_ID                          0x4000002000000000  // R - use with startup option '-create-from-vmmid' to create a thread-safe duplicate VMM instance.
 
 #define VMMDLL_OPT_CORE_SYSTEM                          0x2000000100000000  // R
 #define VMMDLL_OPT_CORE_MEMORYMODEL                     0x2000000200000000  // R
@@ -774,6 +775,7 @@ VOID VMMDLL_LogEx(
 #define VMMDLL_FLAG_CACHE_RECENT_ONLY               0x0200  // only fetch from the most recent active cache region when reading.
 #define VMMDLL_FLAG_NO_PREDICTIVE_READ              0x0400  // do not perform additional predictive page reads (default on smaller requests).
 #define VMMDLL_FLAG_FORCECACHE_READ_DISABLE         0x0800  // disable/override any use of VMM_FLAG_FORCECACHE_READ. only recommended for local files. improves forensic artifact order.
+#define VMMDLL_FLAG_SCATTER_PREPAREEX_NOMEMZERO     0x1000  // do not zero out the memory buffer when preparing a scatter read.
 
 /*
 * Read memory in various non-contigious locations specified by the pointers to
@@ -1840,8 +1842,7 @@ _Success_(return) BOOL VMMDLL_Map_GetServicesW(_In_ VMM_HANDLE hVMM, _Out_ PVMMD
 // MEMORY SEARCH FUNCTIONALITY:
 //-----------------------------------------------------------------------------
 
-#define VMMDLL_MEM_SEARCH_VERSION           0xfe3e0002
-#define VMMDLL_MEM_SEARCH_MAX               16
+#define VMMDLL_MEM_SEARCH_VERSION           0xfe3e0003
 #define VMMDLL_MEM_SEARCH_MAXLENGTH         32
 
 typedef struct tdVMMDLL_MEM_SEARCH_CONTEXT_SEARCHENTRY {
@@ -1860,7 +1861,7 @@ typedef struct tdVMMDLL_MEM_SEARCH_CONTEXT {
     BOOL fAbortRequested;       // may be set by caller to abort processing prematurely.
     DWORD cMaxResult;           // # max result entries. '0' = 1 entry. max 0x10000 entries.
     DWORD cSearch;              // number of search entries.
-    VMMDLL_MEM_SEARCH_CONTEXT_SEARCHENTRY search[VMMDLL_MEM_SEARCH_MAX];
+    PVMMDLL_MEM_SEARCH_CONTEXT_SEARCHENTRY pSearch;     // pointer to an array of cSearch entries.
     QWORD vaMin;                // min address to search (page-aligned).
     QWORD vaMax;                // max address to search (page-aligned), if 0 max memory is assumed.
     QWORD vaCurrent;            // current address (may be read by caller).
@@ -1918,11 +1919,11 @@ BOOL VMMDLL_MemSearch(
 #ifndef VMMYARA_RULE_MATCH_DEFINED
 #define VMMYARA_RULE_MATCH_DEFINED
 
-#define VMMYARA_RULE_MATCH_VERSION          0xfedc0003
-#define VMMYARA_RULE_MATCH_TAG_MAX          8
-#define VMMYARA_RULE_MATCH_META_MAX         16
-#define VMMYARA_RULE_MATCH_STRING_MAX       8
-#define VMMYARA_RULE_MATCH_OFFSET_MAX       16
+#define VMMYARA_RULE_MATCH_VERSION          0xfedc0005
+#define VMMYARA_RULE_MATCH_TAG_MAX          27
+#define VMMYARA_RULE_MATCH_META_MAX         32
+#define VMMYARA_RULE_MATCH_STRING_MAX       16
+#define VMMYARA_RULE_MATCH_OFFSET_MAX       24
 
 /*
 * Struct with match information upon a match in VmmYara_RulesScanMemory().
